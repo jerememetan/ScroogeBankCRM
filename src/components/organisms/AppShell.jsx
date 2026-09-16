@@ -1,8 +1,11 @@
 import { NAV, PAGE_TITLES } from '../../data/crm'
+import { cx } from '../../utils/cx'
 import { Heading } from '../atoms/Heading'
 import { BrandMark, PageHeader, PrimaryNav, SessionBar } from '../molecules'
 
 export function AppShell({ role, screen, onNavigate, onLogout, children }) {
+  const dashboard = screen === 'admin' || screen === 'agent'
+
   return (
     <div className="app">
       <header className="shell">
@@ -10,8 +13,8 @@ export function AppShell({ role, screen, onNavigate, onLogout, children }) {
         <PrimaryNav items={NAV[role]} current={screen} onNavigate={onNavigate} />
         <SessionBar role={role} onLogout={onLogout} />
       </header>
-      <main className="page">
-        <PageHeader title={PAGE_TITLES[screen]} />
+      <main className={cx('page', dashboard && 'page--dashboard')}>
+        {dashboard ? null : <PageHeader title={PAGE_TITLES[screen]} />}
         {children}
       </main>
     </div>

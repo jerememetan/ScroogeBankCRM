@@ -18,7 +18,8 @@ describe('CRM wireframe', () => {
 
     await loginAs(user)
 
-    expect(screen.getByRole('heading', { name: 'Agent Dashboard' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Welcome back, Jdoe' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'My Recent Activities' })).toBeInTheDocument()
     expect(screen.getByText('Scrooge Global Bank')).toBeInTheDocument()
     expect(screen.getByText('Agent')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Log out' })).toBeInTheDocument()
@@ -43,7 +44,7 @@ describe('CRM wireframe', () => {
     await user.click(screen.getByRole('button', { name: 'Login' }))
 
     expect(screen.getByRole('alert')).toHaveTextContent('Enter a username and password.')
-    expect(screen.queryByRole('heading', { name: 'Agent Dashboard' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Welcome back, Jdoe' })).not.toBeInTheDocument()
   })
 
   it('returns to login after logout', async () => {
@@ -62,15 +63,17 @@ describe('CRM wireframe', () => {
 
     await loginAs(user, 'admin')
 
-    expect(screen.getByRole('heading', { name: 'Admin Dashboard' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Welcome back, Jdoe' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Recent Activities' })).toBeInTheDocument()
     expect(screen.getByText('Admin')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Settings' })).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('link', { name: 'Transactions' }))
     expect(screen.getByRole('heading', { name: 'View Transactions' })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Welcome back, Jdoe' })).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('link', { name: 'Dashboard' }))
-    expect(screen.getByRole('heading', { name: 'Admin Dashboard' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Welcome back, Jdoe' })).toBeInTheDocument()
   })
 
   it('filters the account list from search', async () => {

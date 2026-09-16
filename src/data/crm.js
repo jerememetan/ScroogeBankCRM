@@ -1,5 +1,15 @@
+export function formatUserName(username) {
+  const value = String(username || '').trim()
+  if (!value) return 'there'
+  return value
+    .split(/[._\s-]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ')
+}
+
 export const BANK_NAME = 'Scrooge Global Bank'
-export const PRODUCT_NAME = 'CRM'
+export const PRODUCT_NAME = 'CRM System'
 
 export const GENDERS = ['Male', 'Female', 'Non-binary', 'Prefer not to say']
 export const ACCOUNT_TYPES = ['Savings', 'Checking', 'Business']

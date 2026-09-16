@@ -20,12 +20,12 @@ export function LoginForm({ onLogin }) {
         setError('Enter a username and password.')
         return
       }
-      onLogin(role)
+      onLogin(role, String(data.get('username') || '').trim())
     }
   }
 
   return (
-    <FormGrid onSubmit={submit('agent')}>
+    <FormGrid className="rounded-xl" onSubmit={submit('agent')}>
       {error ? <Message tone="danger" role="alert">{error}</Message> : null}
       {LOGIN_FIELDS.map((field) => <FieldControl key={field.name} field={field} />)}
       <ButtonRow>
