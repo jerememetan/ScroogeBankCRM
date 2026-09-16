@@ -1,0 +1,30 @@
+* { box-sizing: border-box; }
+
+html, body, #root { min-height: 100%; }
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  line-height: var(--line-height-body);
+  color: var(--color-text);
+  background-color: var(--color-bg);
+  background-image: var(--image-paper);
+  background-size: var(--paper-size);
+  background-repeat: repeat;
+}
+
+button, input, select { font: inherit; }
+
+:is(.button, .control, .nav-link):focus-visible {
+  outline: var(--focus-width) solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page { animation: none; }
+}
