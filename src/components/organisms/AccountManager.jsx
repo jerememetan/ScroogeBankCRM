@@ -1,32 +1,45 @@
 import { useState } from 'react'
-import { INITIAL_ACCOUNTS } from '../../data/crm'
+import { ACCOUNT_STATUSES, ACCOUNT_TYPES } from '../../data/crm'
 import { useListFilter } from '../../hooks/useListFilter'
+import { hasMissingFields, nextId, personName, readFields, withDefaults } from '../../utils/records'
 import { Button } from '../atoms/Button'
 import { StatusBadge } from '../atoms/StatusBadge'
-import { DataTable, SearchToolbar } from '../molecules'
-import { AccountForm } from './ClientForm'
+import { DataTable, SearchToolbar, TableActions } from '../molecules'
 import { Section } from './AppShell'
+import { RecordForm } from './RecordForm'
 
 function accountValues(row) {
   return [row.id, row.client, row.type, row.status]
 }
 
-export function AccountManager() {
-  const [rows, setRows] = useState(INITIAL_ACCOUNTS)
-  const [draft, setDraft] = useState(false)
-  const { query, setQuery, visible, applySearch } = useListFilter(rows, accountValues)
+function accountFields(clients) {
+  const names = clients.map(personName)
+  return [
+    {
+      label: 'Client',
+      name: 'client',
+      type: 'select',
+      options: names,
+      placeholder: names.length ? 'Select client' : 'Add a client first',
+    },
+    { label: 'Type', name: 'type', type: 'select', options: ACCOUNT_TYPES, defaultValue: 'Savings' },
+    { label: 'Status', name: 'status', type: 'select', options: ACCOUNT_STATUSES, defaultValue: 'Active' },
+  ]
+}
 
-  function addAccount(event) {
+export function AccountManager({ rows, setRows, clients }) {
+  const [editor, setEditor] = useState(null)
+  const { query, setQuery, visible, applySearch } = useListFilter(rows, accountValues)
+  const fields = accountFields(clients)
+
+  function save(event) {
     event.preventDefault()
-    const data = new FormData(event.currentTarget)
-    const client = String(data.get('client') || '').trim()
-    if (!client) return
-    setRows((current) => [
-      ...current,
-      { id: String(9100 + current.length + 2), client, type: String(data.get('type') || 'Savings'), status: 'Pending' },
-    ])
-    event.currentTarget.reset()
-    setDraft(false)
+    const values = readFields(event.currentTarget, fields)
+    if (hasMissingFields(values, fields)) return
+    setRows((current) => editor?.id
+      ? current.map((row) => (row.id === editor.id ? { ...row, ...values } : row))
+      : [...current, { ...values, id: nextId('A', current) }])
+    setEditor(null)
   }
 
   return (
@@ -38,9 +51,17 @@ export function AccountManager() {
         placeholder="Account ID or client name"
         onSearch={applySearch}
       >
-        <Button variant="secondary" onClick={() => setDraft(true)}>Add New Account</Button>
+        <Button variant="secondary" onClick={() => setEditor({})}>Add Account</Button>
       </SearchToolbar>
-      {draft ? <AccountForm onSave={addAccount} onCancel={() => setDraft(false)} /> : null}
+      {editor ? (
+        <RecordForm
+          key={editor.id ?? 'new-account'}
+          title={editor.id ? 'Edit Account' : 'New Account'}
+          fields={withDefaults(fields, editor.id ? editor : undefined)}
+          onSave={save}
+          onCancel={() => setEditor(null)}
+        />
+      ) : null}
       <Section title="Account List" titleId="account-list">
         <DataTable
           caption="Account List"
@@ -52,7 +73,10 @@ export function AccountManager() {
             { key: 'type', header: 'Type' },
             { key: 'status', header: 'Status', render: (row) => <StatusBadge value={row.status} /> },
             { key: 'actions', header: 'Actions', render: (row) => (
-              <Button variant="ghost" tone="danger" onClick={() => setRows((current) => current.filter((item) => item.id !== row.id))}>Delete</Button>
+              <TableActions>
+                <Button variant="ghost" onClick={() => setEditor(row)}>Edit</Button>
+                <Button variant="ghost" tone="danger" onClick={() => setRows((current) => current.filter((item) => item.id !== row.id))}>Delete</Button>
+              </TableActions>
             ) },
           ]}
         />

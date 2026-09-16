@@ -26,10 +26,11 @@ export function LoginForm({ onLogin }) {
 
   return (
     <FormGrid className="rounded-xl" onSubmit={submit('agent')}>
+      <Message>Bank agents sign in here. Administrators use Login as Admin.</Message>
       {error ? <Message tone="danger" role="alert">{error}</Message> : null}
       {LOGIN_FIELDS.map((field) => <FieldControl key={field.name} field={field} />)}
       <ButtonRow>
-        <Button type="submit">Login</Button>
+        <Button type="submit">Login as Agent</Button>
         <Button variant="secondary" onClick={submit('admin')}>Login as Admin</Button>
       </ButtonRow>
     </FormGrid>

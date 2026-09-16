@@ -8,7 +8,7 @@ afterEach(cleanup)
 async function loginAs(user, role = 'agent') {
   await user.type(screen.getByLabelText('Username'), 'jdoe')
   await user.type(screen.getByLabelText('Password'), 'password')
-  await user.click(screen.getByRole('button', { name: role === 'admin' ? 'Login as Admin' : 'Login' }))
+  await user.click(screen.getByRole('button', { name: role === 'admin' ? 'Login as Admin' : 'Login as Agent' }))
 }
 
 describe('CRM wireframe', () => {
@@ -22,17 +22,24 @@ describe('CRM wireframe', () => {
     expect(screen.getByRole('heading', { name: 'My Recent Activities' })).toBeInTheDocument()
     expect(screen.getByText('Scrooge Global Bank')).toBeInTheDocument()
     expect(screen.getByText('Agent')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Clients' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Accounts' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Log out' })).toBeInTheDocument()
   })
 
-  it('opens the client profile form from the agent dashboard', async () => {
+  it('opens the client list and create form from the agent dashboard', async () => {
     const user = userEvent.setup()
     render(<App />)
 
     await loginAs(user)
-    await user.click(screen.getByRole('link', { name: 'Create Client' }))
+    await user.click(screen.getByRole('link', { name: 'Clients' }))
 
-    expect(screen.getByRole('heading', { name: 'Create Client Profile' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Clients' })).toBeInTheDocument()
+    expect(screen.getByRole('table', { name: 'Client List' })).toBeInTheDocument()
+    expect(screen.getByText('Jane Smith')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Add Client' }))
+    expect(screen.getByRole('heading', { name: 'New Client' })).toBeInTheDocument()
     expect(screen.getByLabelText('Postal Code')).toBeInTheDocument()
     expect(screen.getByRole('combobox', { name: 'Gender' })).toBeInTheDocument()
   })
@@ -41,7 +48,7 @@ describe('CRM wireframe', () => {
     const user = userEvent.setup()
     render(<App />)
 
-    await user.click(screen.getByRole('button', { name: 'Login' }))
+    await user.click(screen.getByRole('button', { name: 'Login as Agent' }))
 
     expect(screen.getByRole('alert')).toHaveTextContent('Enter a username and password.')
     expect(screen.queryByRole('heading', { name: 'Welcome back, Jdoe' })).not.toBeInTheDocument()
@@ -57,7 +64,7 @@ describe('CRM wireframe', () => {
     expect(screen.getByRole('heading', { name: 'Sign in' })).toBeInTheDocument()
   })
 
-  it('opens the admin dashboard and returns there from transactions', async () => {
+  it('opens the admin dashboard and returns there from agents', async () => {
     const user = userEvent.setup()
     render(<App />)
 
@@ -66,10 +73,15 @@ describe('CRM wireframe', () => {
     expect(screen.getByRole('heading', { name: 'Welcome back, Jdoe' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Recent Activities' })).toBeInTheDocument()
     expect(screen.getByText('Admin')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Agents' })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Clients' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Accounts' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Settings' })).not.toBeInTheDocument()
 
-    await user.click(screen.getByRole('link', { name: 'Transactions' }))
-    expect(screen.getByRole('heading', { name: 'View Transactions' })).toBeInTheDocument()
+    await user.click(screen.getByRole('link', { name: 'Agents' }))
+    expect(screen.getByRole('heading', { name: 'Agents' })).toBeInTheDocument()
+    expect(screen.getByRole('table', { name: 'Agent List' })).toBeInTheDocument()
+    expect(screen.getByText('Aisha Tan')).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Welcome back, Jdoe' })).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('link', { name: 'Dashboard' }))
@@ -80,7 +92,7 @@ describe('CRM wireframe', () => {
     const user = userEvent.setup()
     render(<App />)
 
-    await loginAs(user, 'admin')
+    await loginAs(user)
     await user.click(screen.getByRole('link', { name: 'Accounts' }))
     await user.type(screen.getByLabelText('Search'), 'Jane')
     await user.click(screen.getByRole('button', { name: 'Search' }))

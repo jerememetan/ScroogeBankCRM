@@ -7,7 +7,7 @@ import { DataTable, SearchToolbar } from '../molecules'
 import { Section } from './AppShell'
 
 function transactionValues(row) {
-  return [row.id, row.amount, row.type, row.status, row.clientId]
+  return [row.id, row.amount, row.type, row.status, row.accountId]
 }
 
 export function TransactionManager() {
@@ -22,11 +22,12 @@ export function TransactionManager() {
         label="Transaction controls"
         query={query}
         onQueryChange={(event) => setQuery(event.target.value)}
-        placeholder="Transaction or client ID"
+        placeholder="Transaction or account ID"
         onSearch={applySearch}
       />
       <Section title="Transaction List" titleId="transaction-list">
         <DataTable
+          caption="Transaction List"
           empty="No transactions match that search."
           rows={visible}
           columns={[
@@ -47,7 +48,7 @@ export function TransactionManager() {
       </Section>
       {selected ? (
         <Section title={`Transaction ${selected.id}`} aria-label="Transaction details">
-          <p>{selected.type} of {selected.amount} on {selected.date} for client {selected.clientId}.</p>
+          <p>{selected.type} of {selected.amount} on {selected.date} for account {selected.accountId}.</p>
           <p>Status: <StatusBadge value={selectedStatus} /></p>
           <Button variant="secondary" onClick={() => setSelected(null)}>Close</Button>
         </Section>

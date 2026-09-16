@@ -4,6 +4,8 @@ const TONE = {
   Active: 'success',
   Completed: 'success',
   Pending: 'warning',
+  Inactive: 'warning',
+  Disabled: 'danger',
   Failed: 'danger',
 }
 

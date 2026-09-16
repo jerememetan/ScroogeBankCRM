@@ -1,5 +1,6 @@
 export { LoginPage } from './LoginPage'
 export { DashboardPage } from './DashboardPage'
-export { ClientProfilePage } from './ClientProfilePage'
+export { ClientsPage } from './ClientsPage'
 export { AccountsPage } from './AccountsPage'
+export { AgentsPage } from './AgentsPage'
 export { TransactionsPage } from './TransactionsPage'
