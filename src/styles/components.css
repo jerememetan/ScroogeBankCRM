@@ -1,4 +1,6 @@
 /* Atoms */
+@import "tailwindcss";
+
 .button {
   cursor: pointer;
   border: 1px solid var(--color-brand);

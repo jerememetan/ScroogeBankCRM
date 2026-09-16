@@ -1,3 +1,5 @@
+@import "tailwindcss";
+
 * { box-sizing: border-box; }
 
 html, body, #root { min-height: 100%; }
@@ -19,6 +21,11 @@ body {
 }
 
 button, input, select { font: inherit; }
+
+ul {
+  margin: 0;
+  padding-left: 1.25rem;
+}
 
 :is(.button, .control, .nav-link):focus-visible {
   outline: var(--focus-width) solid var(--color-focus);
