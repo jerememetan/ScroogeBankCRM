@@ -67,9 +67,15 @@
 
   --radius-sm: 3px;
   --radius-md: 4px;
+  --radius-lg: 8px;
   --radius-pill: 999px;
   --control-padding: 0.6rem;
   --focus-width: 3px;
+  --shadow-seal: inset 0 1px 0 rgb(255 255 255 / 0.34), 0 1px 0 color-mix(in srgb, var(--color-mahogany) 50%, black), 0 6px 14px color-mix(in srgb, var(--color-garnet) 28%, transparent);
+  --shadow-seal-hover: inset 0 1px 0 rgb(255 255 255 / 0.4), 0 2px 0 color-mix(in srgb, var(--color-mahogany) 55%, black), 0 10px 18px color-mix(in srgb, var(--color-garnet) 34%, transparent);
+  --shadow-seal-press: inset 0 2px 5px color-mix(in srgb, var(--color-mahogany) 38%, transparent);
+  --shadow-paper: inset 0 1px 0 rgb(255 255 255 / 0.92), 0 1px 0 color-mix(in srgb, var(--color-garnet) 16%, transparent), 0 4px 10px color-mix(in srgb, var(--color-garnet) 10%, transparent);
+  --shadow-inset: inset 0 1px 2px color-mix(in srgb, var(--color-garnet) 12%, transparent);
   --page-max: 980px;
   --form-max: 620px;
   --form-wide: 720px;

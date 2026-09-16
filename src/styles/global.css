@@ -25,13 +25,18 @@ button, input, select { font: inherit; }
 ul {
   margin: 0;
   padding-left: 1.25rem;
+  list-style: disc;
 }
 
-:is(.button, .control, .nav-link):focus-visible {
+:is(.button, .nav-link):focus-visible {
   outline: var(--focus-width) solid var(--color-focus);
   outline-offset: 2px;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .page { animation: none; }
+  .button, .nav-link, .control, .field-label, .badge, .role-badge, .surface {
+    transition: none;
+  }
+  .button:hover, .button:active, .nav-link:hover { transform: none; }
 }
