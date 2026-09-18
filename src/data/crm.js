@@ -44,7 +44,6 @@ export const NAV = {
     ['agent', 'Dashboard'],
     ['clients', 'Clients'],
     ['accounts', 'Accounts'],
-    ['transactions', 'Transactions'],
   ],
   admin: [
     ['admin', 'Dashboard'],
@@ -57,7 +56,6 @@ export const PAGE_TITLES = {
   admin: 'Admin Dashboard',
   clients: 'Clients',
   accounts: 'Accounts',
-  transactions: 'Transactions',
   agents: 'Agents',
 }
 
@@ -125,6 +123,9 @@ export const INITIAL_AGENTS = [
 
 export const INITIAL_TRANSACTIONS = [
   { id: '1001', amount: '$500', type: 'Deposit', status: 'Completed', accountId: 'A1234', date: '2026-09-12' },
+  { id: '1006', amount: '$80', type: 'Withdrawal', status: 'Completed', accountId: 'A1234', date: '2026-09-08' },
+  { id: '1004', amount: '$120', type: 'Deposit', status: 'Completed', accountId: 'A5678', date: '2026-09-10' },
+  { id: '1005', amount: '$40', type: 'Withdrawal', status: 'Completed', accountId: 'A5678', date: '2026-09-13' },
   { id: '1002', amount: '$750', type: 'Withdrawal', status: 'Pending', accountId: 'A5678', date: '2026-09-14' },
   { id: '1003', amount: '$200', type: 'Withdrawal', status: 'Failed', accountId: 'A9101', date: '2026-09-15' },
 ]

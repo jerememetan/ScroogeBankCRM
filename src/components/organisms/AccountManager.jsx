@@ -7,6 +7,7 @@ import { StatusBadge } from '../atoms/StatusBadge'
 import { DataTable, SearchToolbar, TableActions } from '../molecules'
 import { Section } from './AppShell'
 import { RecordForm } from './RecordForm'
+import { TransactionManager } from './TransactionManager'
 
 function accountValues(row) {
   return [row.id, row.client, row.type, row.status]
@@ -29,8 +30,13 @@ function accountFields(clients) {
 
 export function AccountManager({ rows, setRows, clients }) {
   const [editor, setEditor] = useState(null)
+  const [history, setHistory] = useState(null)
   const { query, setQuery, visible, applySearch } = useListFilter(rows, accountValues)
   const fields = accountFields(clients)
+
+  if (history) {
+    return <TransactionManager account={history} onBack={() => setHistory(null)} />
+  }
 
   function save(event) {
     event.preventDefault()
@@ -74,6 +80,7 @@ export function AccountManager({ rows, setRows, clients }) {
             { key: 'status', header: 'Status', render: (row) => <StatusBadge value={row.status} /> },
             { key: 'actions', header: 'Actions', render: (row) => (
               <TableActions>
+                <Button variant="ghost" onClick={() => setHistory(row)}>View history</Button>
                 <Button variant="ghost" onClick={() => setEditor(row)}>Edit</Button>
                 <Button variant="ghost" tone="danger" onClick={() => setRows((current) => current.filter((item) => item.id !== row.id))}>Delete</Button>
               </TableActions>

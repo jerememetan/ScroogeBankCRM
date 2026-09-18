@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { INITIAL_ACCOUNTS, INITIAL_AGENTS, INITIAL_CLIENTS } from './data/crm'
 import { AppShell } from './components/organisms'
-import { AccountsPage, AgentsPage, ClientsPage, DashboardPage, LoginPage, TransactionsPage } from './pages'
+import { AccountsPage, AgentsPage, ClientsPage, DashboardPage, LoginPage } from './pages'
 
 export default function App() {
   const [role, setRole] = useState(null)
@@ -34,7 +34,6 @@ export default function App() {
       {screen === 'clients' ? <ClientsPage rows={clients} setRows={setClients} /> : null}
       {screen === 'accounts' ? <AccountsPage rows={accounts} setRows={setAccounts} clients={clients} /> : null}
       {screen === 'agents' ? <AgentsPage rows={agents} setRows={setAgents} /> : null}
-      {screen === 'transactions' ? <TransactionsPage /> : null}
     </AppShell>
   )
 }

@@ -24,6 +24,7 @@ describe('CRM wireframe', () => {
     expect(screen.getByText('Agent')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Clients' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Accounts' })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Transactions' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Log out' })).toBeInTheDocument()
   })
 
@@ -100,5 +101,24 @@ describe('CRM wireframe', () => {
     const table = screen.getByRole('table', { name: 'Account List' })
     expect(within(table).getByText('Jane Smith')).toBeInTheDocument()
     expect(within(table).queryByText('John Doe')).not.toBeInTheDocument()
+  })
+
+  it('opens an account transaction history from the account list', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    await loginAs(user)
+    await user.click(screen.getByRole('link', { name: 'Accounts' }))
+
+    const table = screen.getByRole('table', { name: 'Account List' })
+    const janeRow = within(table).getByText('Jane Smith').closest('tr')
+    await user.click(within(janeRow).getByRole('button', { name: 'View history' }))
+
+    expect(screen.getByRole('heading', { name: 'Transactions for Jane Smith' })).toBeInTheDocument()
+    expect(screen.getByText('$750')).toBeInTheDocument()
+    expect(screen.queryByText('$500')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Back to accounts' }))
+    expect(screen.getByRole('table', { name: 'Account List' })).toBeInTheDocument()
   })
 })
