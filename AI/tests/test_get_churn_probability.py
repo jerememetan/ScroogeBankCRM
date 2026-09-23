@@ -195,6 +195,21 @@ def test_enormous_integer_is_request_validation_error(payload, path):
         churn.build_features(payload)
 
 
+def test_finite_inputs_cannot_produce_nonfinite_derived_features(payload):
+    payload["account"]["initialDeposit"] = 1e308
+    payload["transactions"][1]["amount"] = 1e308
+    with pytest.raises(churn.RequestValidationError, match="finite"):
+        churn.build_features(payload)
+
+
+def test_negative_derived_balance_remains_valid(payload):
+    payload["account"]["initialDeposit"] = 0
+    payload["transactions"] = [payload["transactions"][2]]
+    f = churn.build_features(payload)
+    assert f["account_current_balance"] == -800
+    assert f["transaction_debit_to_balance"] == pytest.approx(800 / 801)
+
+
 @pytest.mark.parametrize("as_of", ["0001-01-01", "0001-04-01"])
 def test_year_one_history_windows_are_empty_and_finite(payload, as_of):
     payload["asOfDate"] = as_of

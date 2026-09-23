@@ -1,5 +1,5 @@
-joblib
-pandas
-scikit-learn
-xgboost
-pytest
+joblib==1.5.3
+pandas==3.0.5
+scikit-learn==1.6.1
+xgboost==3.2.0
+pytest==9.1.1

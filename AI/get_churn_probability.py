@@ -192,7 +192,7 @@ def build_features(payload):
     last_activity = max((when for when, _ in completed), default=opening)
     denominator = abs(current_balance) + 1.0
 
-    return {
+    features = {
         "client_gender": gender,
         "client_city": city,
         "account_branch_id": branch,
@@ -219,6 +219,10 @@ def build_features(payload):
         "transaction_debit_to_balance": current_debit / denominator,
         "transaction_credit_to_balance": current_credit / denominator,
     }
+    for name, value in features.items():
+        if isinstance(value, (int, float)) and not math.isfinite(value):
+            raise RequestValidationError(f"derived feature {name} must be finite")
+    return features
 
 
 def _load_artifacts():
