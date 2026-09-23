@@ -145,6 +145,20 @@ def test_direct_and_gateway_invocation(payload, monkeypatch):
         churn.lambda_handler({}, None)
 
 
+@pytest.mark.parametrize("field,old", [
+    ("initialDeposit", "5000.0"),
+    ("amount", "1000"),
+])
+def test_gateway_json_integer_over_conversion_limit_returns_400(payload, field, old):
+    body = json.dumps(payload)
+    original = f'"{field}": {old}'
+    assert original in body
+    body = body.replace(original, f'"{field}": ' + '9' * 5000, 1)
+    response = churn.lambda_handler({"body": body}, None)
+    assert response["statusCode"] == 400
+    assert json.loads(response["body"]) == {"error": "body must contain valid JSON"}
+
+
 def test_gateway_inference_failure_is_generic(payload, monkeypatch):
     monkeypatch.setattr(churn, "_load_artifacts",
                         lambda: (FakePipeline(error=RuntimeError("private path")), fake_metadata(payload)))
