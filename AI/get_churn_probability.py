@@ -13,16 +13,20 @@ MODELS_DIR = Path(__file__).resolve().parent / "models"
 _ARTIFACTS = None
 
 
+class RequestValidationError(ValueError):
+    """The scoring request does not satisfy the input contract."""
+
+
 def _object(value, name):
     if not isinstance(value, dict):
-        raise ValueError(f"{name} must be an object")
+        raise RequestValidationError(f"{name} must be an object")
     return value
 
 
 def _string(obj, key, name):
     value = obj.get(key)
     if not isinstance(value, str) or not value.strip():
-        raise ValueError(f"{name}.{key} must be a nonempty string")
+        raise RequestValidationError(f"{name}.{key} must be a nonempty string")
     return value
 
 
@@ -31,19 +35,39 @@ def _date(obj, key, name):
     try:
         parsed = date.fromisoformat(value)
     except ValueError as exc:
-        raise ValueError(f"{name}.{key} must be a valid YYYY-MM-DD date") from exc
+        raise RequestValidationError(f"{name}.{key} must be a valid YYYY-MM-DD date") from exc
     if parsed.isoformat() != value:
-        raise ValueError(f"{name}.{key} must be a valid YYYY-MM-DD date")
+        raise RequestValidationError(f"{name}.{key} must be a valid YYYY-MM-DD date")
     return parsed
 
 
 def _amount(obj, key, name):
     value = obj.get(key)
     if isinstance(value, bool) or not isinstance(value, (int, float)):
-        raise ValueError(f"{name}.{key} must be a finite nonnegative number")
-    if not math.isfinite(value) or value < 0:
-        raise ValueError(f"{name}.{key} must be a finite nonnegative number")
-    return value
+        raise RequestValidationError(f"{name}.{key} must be a finite nonnegative number")
+    try:
+        number = float(value)
+    except OverflowError as exc:
+        raise RequestValidationError(f"{name}.{key} must be a finite nonnegative number") from exc
+    if not math.isfinite(number) or number < 0:
+        raise RequestValidationError(f"{name}.{key} must be a finite nonnegative number")
+    return number
+
+
+def _balance_after(item, name):
+    if "balanceAfter" not in item:
+        raise RequestValidationError(f"{name}.balanceAfter is required")
+    value = item["balanceAfter"]
+    if value is None:
+        return
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise RequestValidationError(f"{name}.balanceAfter must be null or a finite number")
+    try:
+        finite = math.isfinite(float(value))
+    except OverflowError as exc:
+        raise RequestValidationError(f"{name}.balanceAfter must be null or a finite number") from exc
+    if not finite:
+        raise RequestValidationError(f"{name}.balanceAfter must be null or a finite number")
 
 
 def _month_start(day):
@@ -51,7 +75,10 @@ def _month_start(day):
 
 
 def _previous_month_start(day):
-    return (day.replace(day=1) - timedelta(days=1)).replace(day=1)
+    month_start = day.replace(day=1)
+    if month_start == date.min:
+        return None
+    return (month_start - timedelta(days=1)).replace(day=1)
 
 
 def _quarter_start(day):
@@ -82,15 +109,15 @@ def build_features(payload):
     currency = _string(account, "currency", "account")
     branch = _string(account, "branchId", "account")
     if birth > as_of or opening > as_of:
-        raise ValueError("dateOfBirth and openingDate must be on or before asOfDate")
+        raise RequestValidationError("dateOfBirth and openingDate must be on or before asOfDate")
     if account_client_id != client_id:
-        raise ValueError("account.clientId does not match client.clientId")
+        raise RequestValidationError("account.clientId does not match client.clientId")
     if currency != "SGD":
-        raise ValueError("account.currency must be SGD")
+        raise RequestValidationError("account.currency must be SGD")
 
     transactions = payload.get("transactions")
     if not isinstance(transactions, list):
-        raise ValueError("transactions must be an array")
+        raise RequestValidationError("transactions must be an array")
     completed = []
     for index, item in enumerate(transactions):
         name = f"transactions[{index}]"
@@ -103,37 +130,44 @@ def build_features(payload):
         amount = _amount(item, "amount", name)
         when = _date(item, "date", name)
         status = _string(item, "status", name)
+        _balance_after(item, name)
         if tx_account != account_id or tx_client != client_id:
-            raise ValueError(f"{name} identifiers do not match account and client")
+            raise RequestValidationError(f"{name} identifiers do not match account and client")
         if when < opening or when > as_of:
-            raise ValueError(f"{name}.date is outside the scoring snapshot")
+            raise RequestValidationError(f"{name}.date is outside the scoring snapshot")
         if kind not in {"DEPOSIT", "WITHDRAWAL", "TRANSFER", "PAYMENT", "DEBIT"}:
-            raise ValueError(f"{name}.transaction is invalid")
+            raise RequestValidationError(f"{name}.transaction is invalid")
         if direction not in {"INCOMING", "OUTGOING"}:
-            raise ValueError(f"{name}.direction is invalid")
+            raise RequestValidationError(f"{name}.direction is invalid")
         if (kind == "DEPOSIT" and direction != "INCOMING") or (
             kind in {"WITHDRAWAL", "PAYMENT", "DEBIT"} and direction != "OUTGOING"
         ):
-            raise ValueError(f"{name}.direction conflicts with transaction")
+            raise RequestValidationError(f"{name}.direction conflicts with transaction")
         if status not in {"COMPLETED", "PENDING", "FAILED"}:
-            raise ValueError(f"{name}.status is invalid")
+            raise RequestValidationError(f"{name}.status is invalid")
         if status == "COMPLETED":
             completed.append((when, amount if direction == "INCOMING" else -amount))
 
     current_start = _month_start(as_of)
     previous_start = _previous_month_start(as_of)
-    previous_end = current_start - timedelta(days=1)
-    previous_quarter_end = _quarter_start(as_of) - timedelta(days=1)
-    previous_quarter_start = _quarter_start(previous_quarter_end)
-    two_quarters_end = previous_quarter_start - timedelta(days=1)
-    two_quarters_start = _quarter_start(two_quarters_end)
+    previous_end = current_start - timedelta(days=1) if previous_start is not None else None
+    quarter_start = _quarter_start(as_of)
+    previous_quarter_end = quarter_start - timedelta(days=1) if quarter_start > date.min else None
+    previous_quarter_start = _quarter_start(previous_quarter_end) if previous_quarter_end else None
+    two_quarters_end = (
+        previous_quarter_start - timedelta(days=1)
+        if previous_quarter_start is not None and previous_quarter_start > date.min else None
+    )
+    two_quarters_start = _quarter_start(two_quarters_end) if two_quarters_end else None
 
     def balance_at(day):
-        if day < opening:
+        if day is None or day < opening:
             return 0
         return initial + sum(signed for when, signed in completed if when <= day)
 
     def mean_daily_closing(start, end):
+        if start is None or end is None:
+            return 0
         start = max(start, opening)
         if start > end:
             return 0
@@ -141,6 +175,8 @@ def build_features(payload):
         return sum(balance_at(start + timedelta(days=i)) for i in range(days)) / days
 
     def monthly_flows(start, end):
+        if start is None or end is None:
+            return 0, 0
         credits = sum(signed for when, signed in completed if start <= when <= end and signed > 0)
         debits = -sum(signed for when, signed in completed if start <= when <= end and signed < 0)
         return credits, debits
@@ -228,15 +264,15 @@ def lambda_handler(event, context):
         return predict_churn(event)
     try:
         if not isinstance(event["body"], str):
-            raise ValueError("body must be a JSON string object")
+            raise RequestValidationError("body must be a JSON string object")
         try:
             payload = json.loads(event["body"])
         except json.JSONDecodeError as exc:
-            raise ValueError("body must contain valid JSON") from exc
+            raise RequestValidationError("body must contain valid JSON") from exc
         if not isinstance(payload, dict):
-            raise ValueError("body must contain a JSON object")
+            raise RequestValidationError("body must contain a JSON object")
         return _response(200, predict_churn(payload))
-    except ValueError as exc:
+    except RequestValidationError as exc:
         return _response(400, {"error": str(exc)})
     except Exception:
         return _response(500, {"error": "Inference failed"})

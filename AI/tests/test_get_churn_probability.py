@@ -10,7 +10,8 @@ from AI import get_churn_probability as churn
 def payload():
     def tx(id, kind, direction, amount, when, status="COMPLETED"):
         return {"id": id, "accountId": "A1", "clientId": "C1", "transaction": kind,
-                "direction": direction, "amount": amount, "date": when, "status": status}
+                "direction": direction, "amount": amount, "date": when, "status": status,
+                "balanceAfter": None}
     return {
         "asOfDate": "2026-09-23",
         "client": {"clientId": "C1", "gender": "Female", "city": "Singapore", "dateOfBirth": "1990-09-24"},
@@ -152,6 +153,62 @@ def test_gateway_inference_failure_is_generic(payload, monkeypatch):
     assert json.loads(response["body"]) == {"error": "Inference failed"}
     with pytest.raises(RuntimeError, match="private path"):
         churn.lambda_handler(payload, None)
+
+
+def test_gateway_pipeline_value_error_is_generic(payload, monkeypatch):
+    private_path = "C:/private/model.joblib"
+    monkeypatch.setattr(churn, "_load_artifacts",
+                        lambda: (FakePipeline(error=ValueError(private_path)), fake_metadata(payload)))
+    response = churn.lambda_handler({"body": json.dumps(payload)}, None)
+    assert response["statusCode"] == 500
+    assert json.loads(response["body"]) == {"error": "Inference failed"}
+    assert private_path not in response["body"]
+    with pytest.raises(ValueError, match="private/model"):
+        churn.lambda_handler(payload, None)
+
+
+def test_balance_after_is_required_even_when_transaction_failed(payload):
+    del payload["transactions"][-1]["balanceAfter"]
+    with pytest.raises(ValueError, match="balanceAfter"):
+        churn.build_features(payload)
+
+
+@pytest.mark.parametrize("value", [True, "7600", float("nan"), float("inf"), -float("inf")])
+def test_balance_after_rejects_nonfinite_or_nonnumeric_values(payload, value):
+    payload["transactions"][0]["balanceAfter"] = value
+    with pytest.raises(ValueError, match="balanceAfter"):
+        churn.build_features(payload)
+
+
+def test_balance_after_is_informational(payload):
+    payload["transactions"][0]["balanceAfter"] = -999.5
+    assert churn.build_features(payload)["account_current_balance"] == 7600
+
+
+@pytest.mark.parametrize("path", [("account", "initialDeposit"), ("transactions", 0, "amount")])
+def test_enormous_integer_is_request_validation_error(payload, path):
+    target = payload
+    for part in path[:-1]:
+        target = target[part]
+    target[path[-1]] = 10 ** 400
+    with pytest.raises(ValueError, match="finite nonnegative"):
+        churn.build_features(payload)
+
+
+@pytest.mark.parametrize("as_of", ["0001-01-01", "0001-04-01"])
+def test_year_one_history_windows_are_empty_and_finite(payload, as_of):
+    payload["asOfDate"] = as_of
+    payload["client"]["dateOfBirth"] = "0001-01-01"
+    payload["account"]["openingDate"] = "0001-01-01"
+    payload["transactions"] = []
+    f = churn.build_features(payload)
+    assert f["account_current_balance"] == 5000
+    expected_previous = 0 if as_of == "0001-01-01" else 5000
+    assert f["account_previous_month_end_balance"] == expected_previous
+    assert f["account_avg_balance_previous_two_quarters"] == 0
+    assert f["transaction_days_since_last_activity"] == (date.fromisoformat(as_of) - date.min).days
+    assert all(not isinstance(value, (int, float)) or float("-inf") < value < float("inf")
+               for value in f.values())
 
 
 def test_real_model_smoke(payload):
