@@ -43,3 +43,6 @@ Desktop.ini
 
 # Vite cache
 .vite/
+
+# Superpower Docs
+docs/superpowers/
