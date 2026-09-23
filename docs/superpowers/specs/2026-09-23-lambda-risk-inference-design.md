@@ -31,75 +31,121 @@ The event contains a JSON string in `body`. A valid request returns HTTP 200 wit
 
 ## Churn Request Contract
 
-The churn request contains the non-engineered columns used to train the model:
+The churn request contains client and account fields from the application schema plus the account's completed transaction history:
 
 ```json
 {
-  "client_gender": "Female",
-  "client_city": "Singapore",
-  "account_branch_id": "SG-001",
-  "client_tenure_months": 48,
-  "client_age_years": 36,
-  "account_current_balance": 8200.0,
-  "account_previous_month_end_balance": 9000.0,
-  "account_avg_balance_previous_quarter": 8800.0,
-  "account_avg_balance_previous_two_quarters": 9100.0,
-  "transaction_current_month_credit_total": 2400.0,
-  "transaction_previous_month_credit_total": 3100.0,
-  "transaction_current_month_debit_total": 3200.0,
-  "transaction_previous_month_debit_total": 2100.0,
-  "account_current_month_average_balance": 8500.0,
-  "account_previous_month_average_balance": 9200.0,
-  "transaction_days_since_last_activity": 18
+  "asOfDate": "2026-09-23",
+  "client": {
+    "clientId": "C1002",
+    "gender": "Female",
+    "city": "Singapore",
+    "dateOfBirth": "1990-07-22"
+  },
+  "account": {
+    "accountId": "A5678",
+    "clientId": "C1002",
+    "accountType": "Checking",
+    "accountStatus": "Active",
+    "openingDate": "2022-09-01",
+    "initialDeposit": 5000.0,
+    "currency": "SGD",
+    "branchId": "SG-001"
+  },
+  "transactions": [
+    {
+      "id": "T1001",
+      "accountId": "A5678",
+      "clientId": "C1002",
+      "transaction": "DEPOSIT",
+      "direction": "INCOMING",
+      "amount": 2400.0,
+      "date": "2026-09-05",
+      "status": "COMPLETED",
+      "balanceAfter": 7400.0,
+      "counterpartyReference": null
+    },
+    {
+      "id": "T1002",
+      "accountId": "A5678",
+      "clientId": "C1002",
+      "transaction": "PAYMENT",
+      "direction": "OUTGOING",
+      "amount": 800.0,
+      "date": "2026-09-10",
+      "status": "COMPLETED",
+      "balanceAfter": 6600.0,
+      "counterpartyReference": "MERCHANT-042"
+    }
+  ]
 }
 ```
 
 The function derives:
 
+- Client age from `client.dateOfBirth` and `asOfDate`.
+- Account tenure in completed months from `account.openingDate` and `asOfDate`.
+- Model `account_branch_id` from `account.branchId`.
+- The current balance by applying completed incoming and outgoing transactions to the initial deposit.
+- Previous month-end balance by replaying completed transactions through that date.
+- Current and previous calendar-month credit and debit totals.
+- Current month-to-date and previous-calendar-month mean daily closing balances.
+- The previous completed quarter's mean daily closing balance and the preceding quarter's mean daily closing balance.
+- Days since the latest completed transaction.
 - Current balance minus previous month-end balance.
 - Current average balance minus previous average balance.
-- Previous-quarter average minus previous-two-quarters average.
+- Previous-quarter average minus the preceding-quarter average.
 - Current and previous credit-minus-debit net flow.
 - Current-minus-previous credit and debit changes.
 - Current debit and credit totals divided by the absolute current balance with a small zero-safe denominator.
 
-The constructed DataFrame is reordered to `feature_columns` from `crm_churn_metadata.json` before prediction.
+Only `COMPLETED` transactions on or before `asOfDate` affect the ledger. Incoming transactions are credits and outgoing transactions are debits. Transactions dated before the opening date are rejected. The initial deposit is the opening-day starting balance. With date-only records, all transactions on a date are reflected in that day's closing balance. Each transaction's `accountId` and `clientId` must match the enclosing account and client. `direction` is required regardless of transaction status and is never inferred from `balanceAfter`.
+
+`account.currency` must be `SGD` for this project but is not a model feature. Account ID, client ID, account type, and account status are retained as response context but are not passed to the model. The constructed DataFrame is reordered to `feature_columns` from `crm_churn_metadata.json` before prediction.
 
 ## Scam Request Contract
 
 ```json
 {
-  "transaction_type": "TRANSFER",
-  "transaction_amount": 1200.0,
-  "transaction_date": "2026-09-23",
-  "history_start_date": "2026-09-01",
-  "destination_type": "ACCOUNT",
-  "destination_history_dates": [
+  "historyStartDate": "2026-09-01",
+  "transaction": {
+    "id": "T2001",
+    "accountId": "A5678",
+    "clientId": "C1002",
+    "transaction": "TRANSFER",
+    "direction": "OUTGOING",
+    "amount": 1200.0,
+    "date": "2026-09-23",
+    "status": "PENDING",
+    "balanceAfter": null,
+    "counterpartyReference": "ACCOUNT-991"
+  },
+  "counterpartyHistoryDates": [
     "2026-09-20",
     "2026-09-21"
   ]
 }
 ```
 
-Accepted canonical transaction types are `CASH_IN`, `CASH_OUT`, `TRANSFER`, `PAYMENT`, and `DEBIT`. For compatibility with current mock records, `Deposit` normalizes to `CASH_IN` and `Withdrawal` normalizes to `CASH_OUT`. Other values are rejected rather than silently mapped to an unrelated type.
+Accepted application transaction types are `DEPOSIT`, `WITHDRAWAL`, `TRANSFER`, `PAYMENT`, and `DEBIT`. `DEPOSIT` normalizes to model value `CASH_IN`, and `WITHDRAWAL` normalizes to `CASH_OUT`. Other values are rejected rather than silently mapped to an unrelated type.
 
-`destination_type` accepts `ACCOUNT` or `MERCHANT`.
+The initial scam scorer handles outgoing transactions, for which `counterpartyReference` represents the model destination. Incoming transaction records remain valid CRM records but are rejected by this scorer because the trained destination-history features would have different semantics. `counterpartyReference` is required for `TRANSFER` and `PAYMENT`. A payment counterparty is treated as a merchant; other supported outgoing transaction types are treated as non-merchant destinations.
 
 Because the CRM stores dates without times, one day equals 24 model steps and the hour is consistently midnight:
 
-- `transaction_day_index`: days from `history_start_date` to `transaction_date`.
+- `transaction_day_index`: days from `historyStartDate` to `transaction.date`.
 - `transaction_hour_of_day`: `0`.
 - `transaction_week_index`: day index divided by seven using integer division.
 - `transaction_day_of_week`: day index modulo seven.
 - `hour_sin`: `0`; `hour_cos`: `1`.
-- `transaction_log_amount`: `log1p(transaction_amount)`.
+- `transaction_log_amount`: `log1p(transaction.amount)`.
 - Type-specific amount columns: amount for the matching type and zero for other types.
-- `destination_prior_count`: number of history dates strictly before the transaction date.
+- `destination_prior_count`: number of `counterpartyHistoryDates` strictly before the transaction date.
 - `destination_prior_count_log`: `log1p(destination_prior_count)`.
 - `destination_age_steps`: days since the earliest prior destination date, multiplied by 24; zero when no prior date exists.
-- `destination_is_merchant`: one for `MERCHANT`, otherwise zero.
+- `destination_is_merchant`: one for `PAYMENT`, otherwise zero.
 
-Future dates and dates equal to the current transaction date are not counted as prior history. The constructed DataFrame is reordered to `feature_columns` from `crm_scam_metadata.json` before prediction.
+Future dates and dates equal to the current transaction date are not counted as prior history. `direction` is required even for pending and failed transactions. The constructed DataFrame is reordered to `feature_columns` from `crm_scam_metadata.json` before prediction.
 
 ## Model Loading
 
@@ -130,7 +176,7 @@ The scam response uses `SCAM` or `NOT_SCAM`; the churn response uses `CHURN` or 
 - Required fields must be present; unexpected fields are tolerated so upstream contracts can evolve without breaking inference.
 - Numeric fields must be finite numbers. Amounts, counts, ages, balances, and day differences that cannot logically be negative are rejected where applicable.
 - Dates must use ISO `YYYY-MM-DD` format.
-- `history_start_date` cannot be after `transaction_date`.
+- `historyStartDate` cannot be after `transaction.date`.
 - Destination history must be a JSON list of ISO dates.
 - Empty categorical strings and unsupported enum values are rejected.
 - The generated feature columns must exactly cover the metadata contract before prediction.
