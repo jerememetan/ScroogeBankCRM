@@ -213,6 +213,14 @@ def test_gateway_bad_body_returns_400(payload, body):
     assert isinstance(json.loads(response["body"])["error"], str)
 
 
+def test_gateway_json_integer_over_conversion_limit_returns_400(payload):
+    body = json.dumps(payload)
+    body = body.replace('"amount": 1200.0', '"amount": ' + '9' * 5000)
+    response = scam.lambda_handler({"body": body}, None)
+    assert response["statusCode"] == 400
+    assert json.loads(response["body"]) == {"error": "body must contain valid JSON"}
+
+
 def test_direct_validation_error_propagates(payload):
     payload["transaction"]["direction"] = "INCOMING"
     with pytest.raises(scam.RequestValidationError):

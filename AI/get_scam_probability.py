@@ -180,7 +180,7 @@ def lambda_handler(event, context):
             raise RequestValidationError("body must be a JSON string object")
         try:
             payload = json.loads(event["body"])
-        except json.JSONDecodeError as exc:
+        except ValueError as exc:
             raise RequestValidationError("body must contain valid JSON") from exc
         if not isinstance(payload, dict):
             raise RequestValidationError("body must contain a JSON object")
