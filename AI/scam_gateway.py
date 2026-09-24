@@ -55,3 +55,15 @@ event = {
 # Direct Lambda-style invocation: pass the request object and no AWS context.
 result = lambda_handler(event, None)
 print(result)
+
+# SAMPLE OUTPUT
+#{'model': 'crm_scam_risk_xgboost',    - classifier info
+# 'model_version': '2.0.0',            - classifier info
+# 'classification': 'SCAM',            - classification SCAM/ NOT_SCAM
+# 'is_positive': True,                 - True/ False
+# 'probability': 0.889429,             - confidence score
+# 'threshold': 0.2,                    - current threshold settings to classify as scam
+# 'advisory_only': True,               - only display an alert, not a hard block to the transaction / do something
+# 'transactionId': 'T2001',            - Just transaction info as usual
+# 'accountId': 'A5678',
+# 'clientId': 'C1002'}

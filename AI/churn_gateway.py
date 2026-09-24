@@ -13,11 +13,11 @@ event = {
         "clientId": "C1002",
 
         # Client characteristics used as model features.
-        "gender": "Female",
+        "gender": "Male",
         "city": "Singapore",
 
         # Used with asOfDate to calculate the client's completed age in years.
-        "dateOfBirth": "1990-07-22"
+        "dateOfBirth": "2000-07-22"
     },
 
     "account": {
@@ -32,7 +32,7 @@ event = {
         "accountStatus": "Active",
 
         # Used with asOfDate to calculate account tenure in completed months.
-        "openingDate": "2022-09-01",
+        "openingDate": "2018-09-01",
 
         # Opening-day starting balance before replaying completed transactions.
         "initialDeposit": 5000.0,
@@ -56,7 +56,7 @@ event = {
             "transaction": "DEPOSIT",
             "direction": "INCOMING",
             "amount": 2400.0,
-            "date": "2026-09-05",
+            "date": "2020-09-05",
             "status": "COMPLETED",
 
             # Informational CRM snapshot; the scorer reconstructs the balance
@@ -78,6 +78,19 @@ event = {
             "balanceAfter": 6600.0,
             "counterpartyReference": "MERCHANT-042"
         },
+        # {
+        #     # Completed outgoing payment: transfer money to other banks (sign of churn?)
+        #     "id": "T1002",
+        #     "accountId": "A5678",
+        #     "clientId": "C1002",
+        #     "transaction": "DEBIT",
+        #     "direction": "OUTGOING",
+        #     "amount": 6600.0,
+        #     "date": "2026-09-11",
+        #     "status": "COMPLETED",
+        #     "balanceAfter": 0,
+        #     "counterpartyReference": None
+        # },
         {
             # Failed outgoing transfer: retained as CRM history, but ignored by
             # churn balance and activity calculations because it did not complete.
@@ -89,7 +102,7 @@ event = {
             "amount": 999.0,
             "date": "2026-09-20",
             "status": "FAILED",
-            "balanceAfter": None,
+            "balanceAfter": 6600.0,
             "counterpartyReference": "ACCOUNT-991"
         }
     ]
@@ -98,3 +111,13 @@ event = {
 # Direct Lambda-style invocation: pass the request object and no AWS context.
 result = lambda_handler(event, None)
 print(result)
+# SAMPLE OUTPUT
+#{'model': 'crm_churn_xgboost',     - Classifier info 
+# 'model_version': '2.0.0',         - Classifier info
+# 'classification': 'NOT_CHURN',    - classification CHURN / NOT_CHURN
+# 'is_positive': False,             - whether Churn is True/ False
+# 'probability': 0.133507,          - Confidence score
+# 'threshold': 0.34,                - Threshold to differciate CHURN/ NOT CHURN
+# 'advisory_only': True,            - Only display an alert, not a hard block to the transaction / do something
+# 'clientId': 'C1002',             - Info on client
+# 'accountId': 'A5678'}
