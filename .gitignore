@@ -1,6 +1,7 @@
 # Dependencies
 node_modules/
 .pnpm-store/
+.venv/
 
 # Build output
 dist/
@@ -40,6 +41,12 @@ Desktop.ini
 .vscode/
 *.swp
 *.swo
+
+
+# Python cache
+AI/__pycache__/
+*.py[cod]
+.pytest_cache/
 
 # Vite cache
 .vite/
